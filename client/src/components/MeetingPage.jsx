@@ -24,7 +24,7 @@ export function MeetingPage() {
     const roomId = params.roomId;
 
     useEffect(() => {
-      const s = socketIO.connect("https://zoom-clone-rho.vercel.app/");
+      const s = socketIO.connect("http://localhost:3001");
       s.on("connect", () => {
         setSocket(s);
         s.emit("join", {
@@ -74,7 +74,7 @@ export function MeetingPage() {
             };
 
          
-            //s.emit("remoteDescription", { description: pc.localDescription });
+            s.emit("remoteDescription", { description: pc.localDescription });
           });
       });
     }, []);
@@ -109,6 +109,8 @@ export function MeetingPage() {
                                   console.log({ msg:err?.message });
                                 console.error(err);
                             }
+                    
+            
                         socket.on("remoteDescription", async ({description}) => {
                             await pc.setRemoteDescription(description);  
                         });

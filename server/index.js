@@ -5,7 +5,7 @@ const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server, {
   cors: {
-    origin: "https://zoom-clone-8n2o.vercel.app"
+    origin: "http://localhost:5174"
   }
 });
 
@@ -91,7 +91,7 @@ io.on('connection', (socket) => {
   });
 
 });
-
-server.listen(3001, () => {
-  console.log('listening on *:3001');
+server.listen(process.env.PORT || 3001, () => {
+  console.log('listening on *:' + (process.env.PORT || 3001));
 });
+

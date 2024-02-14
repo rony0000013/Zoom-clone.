@@ -1,38 +1,97 @@
+const express = require('express');
+const app = express();
+const http = require('http');
+const server = http.createServer(app);
 const { Server } = require("socket.io");
-
-const io = new Server(8000, {
-  cors: true,
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5174"
+  }
 });
 
-const emailToSocketIdMap = new Map();
-const socketidToEmailMap = new Map();
+const rooms = {};
+const users = {};
 
-io.on("connection", (socket) => {
-  console.log(`Socket Connected`, socket.id);
-  socket.on("room:join", (data) => {
-    const { email, room } = data;
-    emailToSocketIdMap.set(email, socket.id);
-    socketidToEmailMap.set(socket.id, email);
-    io.to(room).emit("user:joined", { email, id: socket.id });
-    socket.join(room);
-    io.to(socket.id).emit("room:join", data);
+io.on('connection', (socket) => {
+  console.log('a user connected ' + socket.id);
+
+  socket.on("disconnect", (params) => {
+    Object.keys(rooms).map(roomId => {
+      rooms[roomId].users = rooms[roomId].users.filter(x => x !== socket.id)
+    })
+    delete users[socket.id];
+  })
+
+  socket.on("join", (params) => {
+    const roomId = params.roomId;
+    users[socket.id] = {
+      roomId: roomId
+    }
+    if (!rooms[roomId]) {
+      rooms[roomId] = {
+        roomId,
+        users: []
+      }
+    }
+    rooms[roomId].users.push(socket.id);
+    console.log("user added to room " + roomId);
   });
 
-  socket.on("user:call", ({ to, offer }) => {
-    io.to(to).emit("incomming:call", { from: socket.id, offer });
+  socket.on("localDescription", (params) => {
+    let roomId = users[socket.id].roomId;
+    
+    let otherUsers = rooms[roomId].users;
+    otherUsers.forEach(otherUser => {
+      if (otherUser !== socket.id) {
+        io.to(otherUser).emit("localDescription", {
+            description: params.description
+        })
+      }
+    })
+  })
+
+  socket.on("remoteDescription", (params) => {
+    let roomId = users[socket.id].roomId;    
+    let otherUsers = rooms[roomId].users;
+
+    otherUsers.forEach(otherUser => {
+      if (otherUser !== socket.id) {
+        io.to(otherUser).emit("remoteDescription", {
+            description: params.description
+        })
+      }
+    })
   });
 
-  socket.on("call:accepted", ({ to, ans }) => {
-    io.to(to).emit("call:accepted", { from: socket.id, ans });
+  socket.on("iceCandidate", (params) => {
+    let roomId = users[socket.id].roomId;    
+    let otherUsers = rooms[roomId].users;
+
+    otherUsers.forEach(otherUser => {
+      if (otherUser !== socket.id) {
+        io.to(otherUser).emit("iceCandidate", {
+          candidate: params.candidate
+        })
+      }
+    })
   });
 
-  socket.on("peer:nego:needed", ({ to, offer }) => {
-    console.log("peer:nego:needed", offer);
-    io.to(to).emit("peer:nego:needed", { from: socket.id, offer });
+
+  socket.on("iceCandidateReply", (params) => {
+    let roomId = users[socket.id].roomId;    
+    let otherUsers = rooms[roomId].users;
+
+    otherUsers.forEach(otherUser => {
+      if (otherUser !== socket.id) {
+        io.to(otherUser).emit("iceCandidateReply", {
+          candidate: params.candidate
+        })
+      }
+    })
   });
 
-  socket.on("peer:nego:done", ({ to, ans }) => {
-    console.log("peer:nego:done", ans);
-    io.to(to).emit("peer:nego:final", { from: socket.id, ans });
-  });
+});
+
+server.listen(3001, () => {
+  console.log('listening on *:3001');
 });

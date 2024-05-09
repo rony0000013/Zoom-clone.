@@ -5,7 +5,8 @@ import { Button, Grid, Typography } from "@mui/material"
 import { CentralizedCard } from "./CentralizedCard";
 import { Video } from "./Video";
 
- let pc = new RTCPeerConnection({
+
+ const pc = new RTCPeerConnection({
    iceServers: [
      {
        urls: "stun:stun.l.google.com:19302",
@@ -24,7 +25,7 @@ export function MeetingPage() {
     const roomId = params.roomId;
 
     useEffect(() => {
-      const s = socketIO.connect("http://localhost:3001");
+      const s = socketIO.connect(import.meta.env.VITE_APP_SERVER);
       s.on("connect", () => {
         setSocket(s);
         s.emit("join", {
